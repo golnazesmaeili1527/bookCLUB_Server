@@ -6,6 +6,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QHash>
+#include <QByteArray>
 //#include "BookManager.h"
 //#include "Book.h"
 
@@ -25,6 +27,13 @@ private slots:
     void handleGetUsers(QTcpSocket* socket);
 
 private:
+    // بافر ورودی هر کلاینت؛ چون چند پیام JSON پشت‌سرهم می‌توانند در یک بسته‌ی
+    // TCP به هم بچسبند، پیام‌ها با کاراکتر '\n' جدا می‌شوند و اینجا تا رسیدن
+    // یک خط کامل نگه داشته می‌شوند.
+    QHash<QTcpSocket*, QByteArray> m_buffers;
+    void sendResponse(QTcpSocket* socket, const QJsonObject& response);
+    void processMessage(QTcpSocket* socket, const QJsonObject& json);
+
     // --- Auth / User management ---
     void handleLogin(QTcpSocket* socket, const QJsonObject& data);
     void handleRegister(QTcpSocket* socket, const QJsonObject& data);

@@ -85,6 +85,14 @@ void Server::incomingConnection(qintptr socketDescriptor) {
 
 void Server::disconnected() {
     qDebug() << "Client disconnected";
+    QTcpSocket* socket = qobject_cast<QTcpSocket*>(sender());
+    if (socket) m_buffers.remove(socket);
+}
+
+void Server::sendResponse(QTcpSocket* socket, const QJsonObject& response) {
+    if (!socket) return;
+    socket->write(QJsonDocument(response).toJson(QJsonDocument::Compact) + "\n");
+    socket->flush();
 }
 
 // ================= Dispatch =================
@@ -93,13 +101,25 @@ void Server::readyRead() {
     QTcpSocket* socket = qobject_cast<QTcpSocket*>(sender());
     if (!socket) return;
 
-    QByteArray data = socket->readAll();
-    qDebug() << "SERVER RECEIVED:";
-    qDebug().noquote() << data;
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    if (doc.isNull()) return;
+    QByteArray &buffer = m_buffers[socket];
+    buffer.append(socket->readAll());
 
-    QJsonObject json = doc.object();
+    int newlineIndex;
+    while ((newlineIndex = buffer.indexOf('\n')) != -1) {
+        QByteArray line = buffer.left(newlineIndex);
+        buffer.remove(0, newlineIndex + 1);
+        if (line.trimmed().isEmpty()) continue;
+
+        qDebug() << "SERVER RECEIVED:";
+        qDebug().noquote() << line;
+        QJsonDocument doc = QJsonDocument::fromJson(line);
+        if (doc.isNull()) continue;
+
+        processMessage(socket, doc.object());
+    }
+}
+
+void Server::processMessage(QTcpSocket* socket, const QJsonObject& json) {
     QString type = json.contains("type") ? json["type"].toString() : json["action"].toString();
 
     if (type == "login") {
@@ -196,7 +216,7 @@ void Server::handleLogin(QTcpSocket* socket, const QJsonObject& data) {
         response["message"] = "ورود موفقیت‌آمیز";
     }
 
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
 }
 
 void Server::handleRegister(QTcpSocket* socket, const QJsonObject& data) {
@@ -234,7 +254,7 @@ void Server::handleRegister(QTcpSocket* socket, const QJsonObject& data) {
         response["message"] = "Registration successful!";
     }
 
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
 }
 
 void Server::handleGetUsers(QTcpSocket* socket) {
@@ -268,7 +288,7 @@ void Server::handleGetUsers(QTcpSocket* socket) {
     response["type"] = "users_list";
     response["users"] = usersList;
 
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
     socket->flush();
 }
 
@@ -294,7 +314,7 @@ void Server::handleBlockUser(QTcpSocket* socket, const QJsonObject& data) {
     response["type"] = "admin_action_response";
     response["success"] = success;
     response["message"] = success ? "وضعیت کاربر تغییر کرد" : "کاربر یافت نشد";
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
 }
 
 void Server::handleDeleteUser(QTcpSocket* socket, const QJsonObject& data) {
@@ -316,7 +336,7 @@ void Server::handleDeleteUser(QTcpSocket* socket, const QJsonObject& data) {
     response["type"] = "admin_action_response";
     response["success"] = success;
     response["message"] = success ? "کاربر با موفقیت حذف شد" : "خطا در حذف کاربر";
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
 }
 
 void Server::handleSaveGenres(QTcpSocket *socket, const QJsonObject &data)
@@ -354,7 +374,7 @@ void Server::handleSaveGenres(QTcpSocket *socket, const QJsonObject &data)
     response["success"] = success;
 
     qDebug() << "Sending save_genres_response";
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
     socket->flush();
     qDebug() << "save_genres_response sent";
 }
@@ -370,13 +390,13 @@ void Server::handleGetSecurityQuestion(QTcpSocket* socket, const QJsonObject& da
         if (u["username"].toString() == username) {
             response["success"] = true;
             response["question"] = u["securityQuestion"].toString();
-            socket->write(QJsonDocument(response).toJson());
+            sendResponse(socket, response);
             return;
         }
     }
     response["success"] = false;
     response["message"] = "کاربر یافت نشد";
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
 }
 
 void Server::handleVerifySecurityAnswer(QTcpSocket* socket, const QJsonObject& data) {
@@ -390,12 +410,12 @@ void Server::handleVerifySecurityAnswer(QTcpSocket* socket, const QJsonObject& d
         QJsonObject u = v.toObject();
         if (u["username"].toString() == username) {
             response["success"] = (u["securityAnswer"].toString() == answer);
-            socket->write(QJsonDocument(response).toJson());
+            sendResponse(socket, response);
             return;
         }
     }
     response["success"] = false;
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
 }
 
 void Server::handleResetPassword(QTcpSocket* socket, const QJsonObject& data) {
@@ -417,7 +437,7 @@ void Server::handleResetPassword(QTcpSocket* socket, const QJsonObject& data) {
     }
     if (success) saveUsers(users);
     response["success"] = success;
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
 }
 
 void Server::handleGetProfile(QTcpSocket* socket, const QJsonObject& data) {
@@ -435,13 +455,13 @@ void Server::handleGetProfile(QTcpSocket* socket, const QJsonObject& data) {
             response["role"] = u.value("role").toString();
             response["registration_date"] = u.value("registration_date").toString("نامشخص");
             response["favoriteGenres"] = u.value("favoriteGenres").toArray();
-            socket->write(QJsonDocument(response).toJson());
+            sendResponse(socket, response);
             return;
         }
     }
     response["success"] = false;
     response["message"] = "کاربر یافت نشد";
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
 }
 
 void Server::handleChangePassword(QTcpSocket* socket, const QJsonObject& data) {
@@ -459,7 +479,7 @@ void Server::handleChangePassword(QTcpSocket* socket, const QJsonObject& data) {
             if (u.value("password").toString() != oldPasswordHash) {
                 response["success"] = false;
                 response["message"] = "رمز عبور فعلی اشتباه است";
-                socket->write(QJsonDocument(response).toJson());
+                sendResponse(socket, response);
                 return;
             }
             u["password"] = newPasswordHash;
@@ -467,13 +487,13 @@ void Server::handleChangePassword(QTcpSocket* socket, const QJsonObject& data) {
             saveUsers(users);
             response["success"] = true;
             response["message"] = "رمز عبور با موفقیت تغییر کرد";
-            socket->write(QJsonDocument(response).toJson());
+            sendResponse(socket, response);
             return;
         }
     }
     response["success"] = false;
     response["message"] = "کاربر یافت نشد";
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
 }
 
 // ================= Book handlers =================
@@ -485,7 +505,7 @@ void Server::handleGetBooks(QTcpSocket* socket) {
     response["type"] = "books_list";
     response["books"] = books;
 
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
     socket->flush();
 }
 
@@ -523,7 +543,7 @@ void Server::handleAddToCart(QTcpSocket* socket, const QJsonObject& data) {
     QJsonObject response;
     response["type"] = "add_to_cart_response";
     response["success"] = true;
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
     socket->flush();
 }
 
@@ -555,7 +575,7 @@ void Server::handleGetCart(QTcpSocket* socket, const QJsonObject& data) {
     QJsonObject response;
     response["type"] = "cart_response";
     response["items"] = cartItems;
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
     socket->flush();
 }
 
@@ -581,7 +601,7 @@ void Server::handleRemoveFromCart(QTcpSocket* socket, const QJsonObject& data) {
     QJsonObject response;
     response["type"] = "remove_from_cart_response";
     response["success"] = success;
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
     socket->flush();
 }
 
@@ -678,7 +698,7 @@ void Server::handleCheckout(QTcpSocket* socket, const QJsonObject& data)
         response["total"] = 0;
         response["discountAmount"] = 0;
         response["finalAmount"] = 0;
-        socket->write(QJsonDocument(response).toJson(QJsonDocument::Compact) + "\n");
+        sendResponse(socket, response);
         return;
     }
 
@@ -688,7 +708,7 @@ void Server::handleCheckout(QTcpSocket* socket, const QJsonObject& data)
         response["type"] = "checkout_response";
         response["success"] = false;
         response["message"] = "موجودی کافی نیست: " + stockErrorBook;
-        socket->write(QJsonDocument(response).toJson(QJsonDocument::Compact) + "\n");
+        sendResponse(socket, response);
         return;
     }
 
@@ -743,7 +763,7 @@ void Server::handleCheckout(QTcpSocket* socket, const QJsonObject& data)
     response["discountAmount"] = discount;
     response["finalAmount"] = finalAmount;
     response["message"] = "خرید با موفقیت انجام شد";
-    socket->write(QJsonDocument(response).toJson(QJsonDocument::Compact) + "\n");
+    sendResponse(socket, response);
 }
 void Server::saveBooks(const QJsonArray &books) {
     QFile file(BOOKS_FILE);
@@ -783,7 +803,7 @@ void Server::handleGetLibrary(QTcpSocket* socket, const QJsonObject& data)
     QJsonObject response;
     response["type"] = "library_response";
     response["items"] = library;
-    socket->write(QJsonDocument(response).toJson(QJsonDocument::Compact) + "\n");
+    sendResponse(socket, response);
 }
 void Server::handleGetPurchaseHistory(QTcpSocket* socket, const QJsonObject& data)
 {
@@ -801,7 +821,7 @@ void Server::handleGetPurchaseHistory(QTcpSocket* socket, const QJsonObject& dat
     QJsonObject response;
     response["type"] = "purchase_history_response";
     response["items"] = userHistory;
-    socket->write(QJsonDocument(response).toJson(QJsonDocument::Compact) + "\n");
+    sendResponse(socket, response);
 }
 
 // ================= Search =================
@@ -822,7 +842,7 @@ void Server::handleSearchBooks(QTcpSocket* socket, const QJsonObject& data) {
     QJsonObject response;
     response["type"] = "search_result";
     response["books"] = result;
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
     socket->flush();
 }
 
@@ -887,7 +907,7 @@ void Server::handlePostReview(QTcpSocket* socket, const QJsonObject& data) {
     if (bookId.isEmpty() || username.isEmpty() || rating < 1 || rating > 5) {
         response["success"] = false;
         response["message"] = "اطلاعات نظر نامعتبر است";
-        socket->write(QJsonDocument(response).toJson());
+        sendResponse(socket, response);
         socket->flush();
         return;
     }
@@ -898,7 +918,7 @@ void Server::handlePostReview(QTcpSocket* socket, const QJsonObject& data) {
         if (r["book_id"].toString() == bookId && r["username"].toString() == username) {
             response["success"] = false;
             response["message"] = "شما قبلاً برای این کتاب نظر ثبت کرده‌اید";
-            socket->write(QJsonDocument(response).toJson());
+            sendResponse(socket, response);
             socket->flush();
             return;
         }
@@ -917,7 +937,7 @@ void Server::handlePostReview(QTcpSocket* socket, const QJsonObject& data) {
 
     response["success"] = true;
     response["message"] = "نظر شما ثبت شد";
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
     socket->flush();
 }
 
@@ -949,7 +969,7 @@ void Server::handleEditReview(QTcpSocket* socket, const QJsonObject& data) {
         response["success"] = false;
         response["message"] = "نظر یافت نشد یا مجاز به ویرایش نیستید";
     }
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
     socket->flush();
 }
 
@@ -979,7 +999,7 @@ void Server::handleDeleteReview(QTcpSocket* socket, const QJsonObject& data) {
         response["success"] = false;
         response["message"] = "نظر یافت نشد یا مجاز به حذف نیستید";
     }
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
     socket->flush();
 }
 
@@ -1005,6 +1025,6 @@ void Server::handleGetReviews(QTcpSocket* socket, const QJsonObject& data) {
     response["averageRating"] = avg;
     response["reviewCount"] = count;
 
-    socket->write(QJsonDocument(response).toJson());
+    sendResponse(socket, response);
     socket->flush();
 }
