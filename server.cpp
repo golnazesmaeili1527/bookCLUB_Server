@@ -120,6 +120,10 @@ void Server::readyRead() {
         handleVerifySecurityAnswer(socket, json);
     } else if (type == "reset_password") {
         handleResetPassword(socket, json);
+    } else if (type == "get_profile") {
+        handleGetProfile(socket, json);
+    } else if (type == "change_password") {
+        handleChangePassword(socket, json);
     } else if (type == "get_books") {
         handleGetBooks(socket);
     } else if (type == "add_to_cart") {
@@ -413,6 +417,62 @@ void Server::handleResetPassword(QTcpSocket* socket, const QJsonObject& data) {
     }
     if (success) saveUsers(users);
     response["success"] = success;
+    socket->write(QJsonDocument(response).toJson());
+}
+
+void Server::handleGetProfile(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QJsonArray users = loadUsers();
+
+    QJsonObject response;
+    response["type"] = "profile_response";
+
+    for (const QJsonValue& v : users) {
+        QJsonObject u = v.toObject();
+        if (u["username"].toString() == username) {
+            response["success"] = true;
+            response["username"] = username;
+            response["role"] = u.value("role").toString();
+            response["registration_date"] = u.value("registration_date").toString("نامشخص");
+            response["favoriteGenres"] = u.value("favoriteGenres").toArray();
+            socket->write(QJsonDocument(response).toJson());
+            return;
+        }
+    }
+    response["success"] = false;
+    response["message"] = "کاربر یافت نشد";
+    socket->write(QJsonDocument(response).toJson());
+}
+
+void Server::handleChangePassword(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString oldPasswordHash = data["oldPassword"].toString();
+    QString newPasswordHash = data["newPassword"].toString();
+
+    QJsonArray users = loadUsers();
+    QJsonObject response;
+    response["type"] = "change_password_response";
+
+    for (int i = 0; i < users.size(); i++) {
+        QJsonObject u = users[i].toObject();
+        if (u["username"].toString() == username) {
+            if (u.value("password").toString() != oldPasswordHash) {
+                response["success"] = false;
+                response["message"] = "رمز عبور فعلی اشتباه است";
+                socket->write(QJsonDocument(response).toJson());
+                return;
+            }
+            u["password"] = newPasswordHash;
+            users[i] = u;
+            saveUsers(users);
+            response["success"] = true;
+            response["message"] = "رمز عبور با موفقیت تغییر کرد";
+            socket->write(QJsonDocument(response).toJson());
+            return;
+        }
+    }
+    response["success"] = false;
+    response["message"] = "کاربر یافت نشد";
     socket->write(QJsonDocument(response).toJson());
 }
 

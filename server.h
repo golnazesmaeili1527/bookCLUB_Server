@@ -36,6 +36,8 @@ private:
     void handleGetSecurityQuestion(QTcpSocket* socket, const QJsonObject& data);
     void handleVerifySecurityAnswer(QTcpSocket* socket, const QJsonObject& data);
     void handleResetPassword(QTcpSocket* socket, const QJsonObject& data);
+    void handleGetProfile(QTcpSocket* socket, const QJsonObject& data);
+    void handleChangePassword(QTcpSocket* socket, const QJsonObject& data);
     void handleGetLibrary(QTcpSocket* socket, const QJsonObject& data);
     void handleGetPurchaseHistory(QTcpSocket* socket, const QJsonObject& data);
     void handleSearchBooks(QTcpSocket* socket, const QJsonObject& data);
