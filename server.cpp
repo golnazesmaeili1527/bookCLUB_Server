@@ -80,19 +80,50 @@ void Server::incomingConnection(qintptr socketDescriptor) {
     socket->setSocketDescriptor(socketDescriptor);
     connect(socket, &QTcpSocket::readyRead, this, &Server::readyRead);
     connect(socket, &QTcpSocket::disconnected, this, &Server::disconnected);
+    m_clients.append(socket);
     qDebug() << "New client connected:" << socketDescriptor;
 }
 
 void Server::disconnected() {
     qDebug() << "Client disconnected";
     QTcpSocket* socket = qobject_cast<QTcpSocket*>(sender());
-    if (socket) m_buffers.remove(socket);
+    if (socket) {
+        m_buffers.remove(socket);
+        m_clients.removeAll(socket);
+    }
 }
 
 void Server::sendResponse(QTcpSocket* socket, const QJsonObject& response) {
     if (!socket) return;
     socket->write(QJsonDocument(response).toJson(QJsonDocument::Compact) + "\n");
     socket->flush();
+}
+
+// وقتی نظر یا امتیاز کتابی تغییر می‌کند (ثبت/ویرایش/حذف)، لیست به‌روز نظرها و
+// میانگین امتیاز را برای همه‌ی کلاینت‌های متصل می‌فرستد؛ هر کلاینتی که همان لحظه
+// همین کتاب را باز نکرده باشد، این پیام را نادیده می‌گیرد (سمت BookDetailPage چک می‌شود)
+void Server::broadcastReviewsUpdate(const QString &bookId) {
+    QJsonArray reviews = loadReviews();
+    QJsonArray bookReviews;
+    for (const QJsonValue &val : reviews) {
+        QJsonObject r = val.toObject();
+        if (r["book_id"].toString() == bookId)
+            bookReviews.append(r);
+    }
+
+    double avg;
+    int count;
+    calculateAverageRating(bookId, avg, count);
+
+    QJsonObject response;
+    response["type"] = "reviews_list";
+    response["book_id"] = bookId;
+    response["reviews"] = bookReviews;
+    response["averageRating"] = avg;
+    response["reviewCount"] = count;
+
+    for (QTcpSocket *client : m_clients)
+        sendResponse(client, response);
 }
 
 // ================= Dispatch =================
@@ -953,6 +984,8 @@ void Server::handlePostReview(QTcpSocket* socket, const QJsonObject& data) {
     response["message"] = "نظر شما ثبت شد";
     sendResponse(socket, response);
     socket->flush();
+
+    broadcastReviewsUpdate(bookId);
 }
 
 void Server::handleEditReview(QTcpSocket* socket, const QJsonObject& data) {
@@ -963,6 +996,7 @@ void Server::handleEditReview(QTcpSocket* socket, const QJsonObject& data) {
     QJsonObject response;
     response["type"] = "review_edited";
     bool found = false;
+    QString bookId;
 
     for (int i = 0; i < reviews.size(); i++) {
         QJsonObject r = reviews[i].toObject();
@@ -970,6 +1004,7 @@ void Server::handleEditReview(QTcpSocket* socket, const QJsonObject& data) {
             if (data.contains("rating")) r["rating"] = data["rating"].toInt();
             if (data.contains("comment")) r["comment"] = data["comment"].toString();
             r["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+            bookId = r["book_id"].toString();
             reviews[i] = r;
             found = true;
             break;
@@ -985,6 +1020,8 @@ void Server::handleEditReview(QTcpSocket* socket, const QJsonObject& data) {
     }
     sendResponse(socket, response);
     socket->flush();
+
+    if (found) broadcastReviewsUpdate(bookId);
 }
 
 void Server::handleDeleteReview(QTcpSocket* socket, const QJsonObject& data) {
@@ -994,10 +1031,12 @@ void Server::handleDeleteReview(QTcpSocket* socket, const QJsonObject& data) {
     QJsonArray reviews = loadReviews();
     QJsonArray updated;
     bool found = false;
+    QString bookId;
 
     for (const QJsonValue &val : reviews) {
         QJsonObject r = val.toObject();
         if (r["review_id"].toString() == reviewId && r["username"].toString() == username) {
+            bookId = r["book_id"].toString();
             found = true;
             continue;
         }
@@ -1015,6 +1054,8 @@ void Server::handleDeleteReview(QTcpSocket* socket, const QJsonObject& data) {
     }
     sendResponse(socket, response);
     socket->flush();
+
+    if (found) broadcastReviewsUpdate(bookId);
 }
 
 void Server::handleGetReviews(QTcpSocket* socket, const QJsonObject& data) {

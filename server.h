@@ -8,6 +8,7 @@
 #include <QJsonArray>
 #include <QHash>
 #include <QByteArray>
+#include <QList>
 //#include "BookManager.h"
 //#include "Book.h"
 
@@ -33,6 +34,11 @@ private:
     QHash<QTcpSocket*, QByteArray> m_buffers;
     void sendResponse(QTcpSocket* socket, const QJsonObject& response);
     void processMessage(QTcpSocket* socket, const QJsonObject& json);
+
+    // لیست همه‌ی کلاینت‌های وصل، برای ارسال به‌روزرسانی‌های لحظه‌ای (مثل نظر/امتیاز جدید)
+    // به تمام کاربران متصل، نه فقط کسی که درخواست را فرستاده
+    QList<QTcpSocket*> m_clients;
+    void broadcastReviewsUpdate(const QString &bookId);
 
     // --- Auth / User management ---
     void handleLogin(QTcpSocket* socket, const QJsonObject& data);

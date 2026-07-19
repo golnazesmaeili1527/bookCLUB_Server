@@ -16,7 +16,9 @@
     },
     {
         "favoriteGenres": [
-            "تاریخ"
+            "علمی",
+            "تاریخ",
+            "زندگی‌نامه"
         ],
         "firstLogin": false,
         "password": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
@@ -46,5 +48,22 @@
         "status": "active",
         "type": "register",
         "username": "test3"
+    },
+    {
+        "favoriteGenres": [
+            "تاریخ",
+            "فلسفه"
+        ],
+        "firstLogin": false,
+        "password": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "personalLibrary": [
+        ],
+        "registration_date": "2026/07/19",
+        "role": "Customer",
+        "securityAnswer": "NgocHw==",
+        "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "status": "active",
+        "type": "register",
+        "username": "test22"
     }
 ]
