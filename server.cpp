@@ -553,6 +553,8 @@ void Server::handleGetCart(QTcpSocket* socket, const QJsonObject& data) {
     QJsonArray books = loadBooks();
 
     QJsonArray cartItems;
+    double total = 0;
+    int itemCount = 0;
     for (const QJsonValue& v : carts) {
         QJsonObject item = v.toObject();
         if (item["username"].toString() != username) continue;
@@ -561,20 +563,32 @@ void Server::handleGetCart(QTcpSocket* socket, const QJsonObject& data) {
         for (const QJsonValue& bv : books) {
             QJsonObject book = bv.toObject();
             if (book["id"].toString() == bookId) {
+                int quantity = item["quantity"].toInt(1);
+                double price = book["price"].toDouble();
+
                 QJsonObject cartEntry;
                 cartEntry["book_id"] = bookId;
                 cartEntry["title"] = book["title"].toString();
-                cartEntry["price"] = book["price"].toDouble();
-                cartEntry["quantity"] = item["quantity"].toInt(1);
+                cartEntry["price"] = price;
+                cartEntry["quantity"] = quantity;
                 cartItems.append(cartEntry);
+
+                total += price * quantity;
+                itemCount += quantity;
                 break;
             }
         }
     }
 
+    double discount = calculateDiscount(total, itemCount);
+
     QJsonObject response;
     response["type"] = "cart_response";
     response["items"] = cartItems;
+    response["itemCount"] = itemCount;
+    response["total"] = total;
+    response["discountAmount"] = discount;
+    response["finalAmount"] = total - discount;
     sendResponse(socket, response);
     socket->flush();
 }
