@@ -75,7 +75,6 @@ private:
     QJsonArray loadPurchaseHistory();
     void savePurchaseHistory(const QJsonArray &history);
     void addBooksToLibrary(const QString &username, const QJsonArray &purchasedItems);
-    double calculateDiscount(double total, int itemCount);
 
     // --- Reviews / Ratings ---
     QJsonArray loadReviews();

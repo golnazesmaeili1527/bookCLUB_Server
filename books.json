@@ -2,9 +2,9 @@
     {
         "author": "صادق هدایت",
         "averageRating": 4.6,
-        "coverImage": "",
+        "coverImage": "images/i001.jpeg",
         "description": "یکی از مهم‌ترین آثار ادبیات معاصر ایران.",
-        "discountPercent": 0,
+        "discountPercent": 5,
         "fileURL": "books/b001.pdf",
         "genre": "رمان",
         "id": "b001",
@@ -16,7 +16,7 @@
         "price": 120000,
         "publisher": "امیرکبیر",
         "publisherUsername": "test3",
-        "stock": 25,
+        "stock": 23,
         "title": "بوف کور"
     },
     {

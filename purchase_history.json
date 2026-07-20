@@ -33,17 +33,31 @@
         "username": "test2"
     },
     {
-        "date": "2026-07-20T12:14:28",
-        "discountAmount": 0,
-        "finalAmount": 475000,
+        "date": "2026-07-20T18:21:28",
+        "discountAmount": 6000,
+        "finalAmount": 114000,
         "items": [
             {
-                "book_id": "b1784536984523",
+                "book_id": "b001",
                 "quantity": 1,
                 "username": "test2"
             }
         ],
-        "total": 475000,
+        "total": 120000,
+        "username": "test2"
+    },
+    {
+        "date": "2026-07-20T20:57:30",
+        "discountAmount": 6000,
+        "finalAmount": 114000,
+        "items": [
+            {
+                "book_id": "b001",
+                "quantity": 1,
+                "username": "test2"
+            }
+        ],
+        "total": 120000,
         "username": "test2"
     }
 ]

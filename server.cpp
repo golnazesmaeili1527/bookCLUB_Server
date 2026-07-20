@@ -644,7 +644,8 @@ void Server::handleGetCart(QTcpSocket* socket, const QJsonObject& data) {
     QJsonArray books = loadBooks();
 
     QJsonArray cartItems;
-    double total = 0;
+    double originalTotal = 0;
+    double discount = 0;
     int itemCount = 0;
     for (const QJsonValue& v : carts) {
         QJsonObject item = v.toObject();
@@ -655,7 +656,8 @@ void Server::handleGetCart(QTcpSocket* socket, const QJsonObject& data) {
             QJsonObject book = bv.toObject();
             if (book["id"].toString() == bookId) {
                 int quantity = item["quantity"].toInt(1);
-                double price = effectivePrice(book);
+                double rawPrice = book.value("price").toDouble();
+                double price = effectivePrice(book); // قیمت بعد از تخفیف ناشر روی این کتاب
 
                 QJsonObject cartEntry;
                 cartEntry["book_id"] = bookId;
@@ -664,22 +666,21 @@ void Server::handleGetCart(QTcpSocket* socket, const QJsonObject& data) {
                 cartEntry["quantity"] = quantity;
                 cartItems.append(cartEntry);
 
-                total += price * quantity;
+                originalTotal += rawPrice * quantity;
+                discount += (rawPrice - price) * quantity;
                 itemCount += quantity;
                 break;
             }
         }
     }
 
-    double discount = calculateDiscount(total, itemCount);
-
     QJsonObject response;
     response["type"] = "cart_response";
     response["items"] = cartItems;
     response["itemCount"] = itemCount;
-    response["total"] = total;
+    response["total"] = originalTotal;
     response["discountAmount"] = discount;
-    response["finalAmount"] = total - discount;
+    response["finalAmount"] = originalTotal - discount;
     sendResponse(socket, response);
     socket->flush();
 }
@@ -708,14 +709,6 @@ void Server::handleRemoveFromCart(QTcpSocket* socket, const QJsonObject& data) {
     response["success"] = success;
     sendResponse(socket, response);
     socket->flush();
-}
-
-double Server::calculateDiscount(double total, int itemCount)
-{
-    // ۱۰٪ تخفیف برای خرید بالای ۳ آیتم یا مبلغ بالای ۵۰۰,۰۰۰ تومان
-    if (itemCount >= 3 || total >= 500000)
-        return total * 0.10;
-    return 0.0;
 }
 
 QJsonArray Server::loadPurchaseHistory()
@@ -816,8 +809,9 @@ void Server::handleCheckout(QTcpSocket* socket, const QJsonObject& data)
         return;
     }
 
-    // ۳) محاسبه مبلغ کل و کاهش موجودی
+    // ۳) محاسبه مبلغ کل (قبل از تخفیف)، مجموع تخفیفِ ناشرها و کاهش موجودی
     int itemCount = 0;
+    double discount = 0;
     for (const QJsonValue &v : userItems) {
         QJsonObject item = v.toObject();
         QString bookId = item["book_id"].toString();
@@ -827,7 +821,10 @@ void Server::handleCheckout(QTcpSocket* socket, const QJsonObject& data)
         for (int i = 0; i < books.size(); ++i) {
             QJsonObject book = books[i].toObject();
             if (book["id"].toString() == bookId) {
-                total += effectivePrice(book) * qty;
+                double rawPrice = book.value("price").toDouble();
+                double price = effectivePrice(book);
+                total += rawPrice * qty;
+                discount += (rawPrice - price) * qty;
                 book["stock"] = book["stock"].toInt() - qty;
                 books[i] = book;
                 break;
@@ -835,10 +832,9 @@ void Server::handleCheckout(QTcpSocket* socket, const QJsonObject& data)
         }
     }
 
-    saveBooks(books); 
+    saveBooks(books);
 
-    // ۴) اعمال تخفیف
-    double discount = calculateDiscount(total, itemCount);
+    // ۴) مبلغ نهایی پس از کسرِ تخفیف‌های فعال روی کتاب‌ها
     double finalAmount = total - discount;
 
     // ۵) ذخیره سبد باقی‌مانده
