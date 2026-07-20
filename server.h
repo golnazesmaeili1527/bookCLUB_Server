@@ -61,6 +61,7 @@ private:
     QJsonArray loadBooks();
     void handleGetBooks(QTcpSocket* socket);
     void saveBooks(const QJsonArray &books);
+    double effectivePrice(const QJsonObject &book);
 
     // --- Cart ---
     QJsonArray loadCarts();
@@ -102,6 +103,13 @@ private:
     // --- پیشرفت مطالعه (آخرین صفحه خوانده‌شده هر کتاب برای هر کاربر) ---
     void handleGetReadingProgress(QTcpSocket* socket, const QJsonObject& data);
     void handleSaveReadingProgress(QTcpSocket* socket, const QJsonObject& data);
+
+    // --- پنل ناشر ---
+    void handlePublishBook(QTcpSocket* socket, const QJsonObject& data);
+    void handleUpdateBook(QTcpSocket* socket, const QJsonObject& data);
+    void handleSetBookActive(QTcpSocket* socket, const QJsonObject& data, bool active);
+    void handleGetPublisherBooks(QTcpSocket* socket, const QJsonObject& data);
+    void handleGetPublisherStats(QTcpSocket* socket, const QJsonObject& data);
 
 };
 

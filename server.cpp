@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QFile>
 #include <QDateTime>
+#include <algorithm>
 
 // مسیر فایل‌های ذخیره‌سازی
 const QString USERS_FILE = "users.json";
@@ -219,6 +220,18 @@ void Server::processMessage(QTcpSocket* socket, const QJsonObject& json) {
         handleGetReadingProgress(socket, json);
     } else if (type == "save_reading_progress") {
         handleSaveReadingProgress(socket, json);
+    } else if (type == "publish_book") {
+        handlePublishBook(socket, json);
+    } else if (type == "update_book") {
+        handleUpdateBook(socket, json);
+    } else if (type == "deactivate_book") {
+        handleSetBookActive(socket, json, false);
+    } else if (type == "activate_book") {
+        handleSetBookActive(socket, json, true);
+    } else if (type == "get_publisher_books") {
+        handleGetPublisherBooks(socket, json);
+    } else if (type == "get_publisher_stats") {
+        handleGetPublisherStats(socket, json);
     }
 
 }
@@ -550,7 +563,15 @@ void Server::handleChangePassword(QTcpSocket* socket, const QJsonObject& data) {
 // ================= Book handlers =================
 
 void Server::handleGetBooks(QTcpSocket* socket) {
-    QJsonArray books = loadBooks();
+    QJsonArray allBooks = loadBooks();
+    QJsonArray books;
+    for (const QJsonValue &v : allBooks) {
+        QJsonObject book = v.toObject();
+        // کتاب‌های غیرفعال‌شده توسط ناشر از فروشگاه/جستجو حذف می‌شوند؛ کاربرانی که
+        // قبلاً خریده‌اند همچنان از طریق کتابخانه شخصی (handleGetLibrary) دسترسی دارند
+        if (book.value("isActive").toBool(true))
+            books.append(book);
+    }
 
     QJsonObject response;
     response["type"] = "books_list";
@@ -558,6 +579,15 @@ void Server::handleGetBooks(QTcpSocket* socket) {
 
     sendResponse(socket, response);
     socket->flush();
+}
+
+// قیمت واقعی یک کتاب بعد از اعمال تخفیف درصدی که ناشر روی آن گذاشته
+double Server::effectivePrice(const QJsonObject &book) {
+    double price = book.value("price").toDouble();
+    double discountPercent = book.value("discountPercent").toDouble(0);
+    if (discountPercent <= 0) return price;
+    if (discountPercent >= 100) return 0;
+    return price * (1.0 - discountPercent / 100.0);
 }
 
 // ================= Cart handlers =================
@@ -615,7 +645,7 @@ void Server::handleGetCart(QTcpSocket* socket, const QJsonObject& data) {
             QJsonObject book = bv.toObject();
             if (book["id"].toString() == bookId) {
                 int quantity = item["quantity"].toInt(1);
-                double price = book["price"].toDouble();
+                double price = effectivePrice(book);
 
                 QJsonObject cartEntry;
                 cartEntry["book_id"] = bookId;
@@ -672,7 +702,6 @@ void Server::handleRemoveFromCart(QTcpSocket* socket, const QJsonObject& data) {
 
 double Server::calculateDiscount(double total, int itemCount)
 {
-    // نمونه سیاست تخفیف (قابل تنظیم طبق نیاز پروژه):
     // ۱۰٪ تخفیف برای خرید بالای ۳ آیتم یا مبلغ بالای ۵۰۰,۰۰۰ تومان
     if (itemCount >= 3 || total >= 500000)
         return total * 0.10;
@@ -788,7 +817,7 @@ void Server::handleCheckout(QTcpSocket* socket, const QJsonObject& data)
         for (int i = 0; i < books.size(); ++i) {
             QJsonObject book = books[i].toObject();
             if (book["id"].toString() == bookId) {
-                total += book["price"].toDouble() * qty;
+                total += effectivePrice(book) * qty;
                 book["stock"] = book["stock"].toInt() - qty;
                 books[i] = book;
                 break;
@@ -796,7 +825,7 @@ void Server::handleCheckout(QTcpSocket* socket, const QJsonObject& data)
         }
     }
 
-    saveBooks(books); // در صورت نبود، این متد را طبق الگوی saveUsers اضافه کنید
+    saveBooks(books); 
 
     // ۴) اعمال تخفیف
     double discount = calculateDiscount(total, itemCount);
@@ -899,6 +928,7 @@ void Server::handleSearchBooks(QTcpSocket* socket, const QJsonObject& data) {
     QJsonArray result;
     for (const QJsonValue &val : allBooks) {
         QJsonObject book = val.toObject();
+        if (!book.value("isActive").toBool(true)) continue;
         if (book[field].toString().toLower().contains(query))
             result.append(book);
     }
@@ -1214,8 +1244,8 @@ void Server::handleGetSavedBooks(QTcpSocket* socket, const QJsonObject& data) {
 // ================= قفسه‌ها و دسته‌بندی‌های شخصی =================
 
 // پاسخ مشترک برای هر عملیات روی قفسه‌ها: لیست کامل و به‌روز قفسه‌ها (با جزئیات کتاب‌های
-// هرکدوم) به همراه نتیجه‌ی همون عملیات، تا کلاینت مجبور نباشه برای هر عملیات یه
-// درخواست جدا برای دریافت لیست بفرسته
+// هرکدوم) به همراه نتیجه‌ی همان عملیات، تا کلاینت مجبور نباشد برای هر عملیات یک
+// درخواست جدا برای دریافت لیست ارسال کند
 void Server::sendShelvesResponse(QTcpSocket* socket, const QString &username, bool success, const QString &message) {
     QJsonArray users = loadUsers();
     QJsonArray allBooks = loadBooks();
@@ -1447,4 +1477,215 @@ void Server::handleSaveReadingProgress(QTcpSocket* socket, const QJsonObject& da
         }
     }
     // نیازی به پاسخ نیست؛ ذخیره‌ی پیشرفت مطالعه در پس‌زمینه انجام می‌شود
+}
+
+// ================= پنل ناشر =================
+
+void Server::handlePublishBook(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString title = data["title"].toString().trimmed();
+    QString author = data["author"].toString().trimmed();
+
+    QJsonObject response;
+    response["type"] = "publish_book_response";
+
+    if (username.isEmpty() || title.isEmpty() || author.isEmpty()) {
+        response["success"] = false;
+        response["message"] = "اطلاعات کتاب ناقص است";
+        sendResponse(socket, response);
+        return;
+    }
+
+    QJsonArray books = loadBooks();
+
+    QJsonObject newBook;
+    newBook["id"] = "b" + QString::number(QDateTime::currentMSecsSinceEpoch());
+    newBook["title"] = title;
+    newBook["author"] = author;
+    newBook["genre"] = data["genre"].toString();
+    newBook["description"] = data["description"].toString();
+    double price = data["price"].toDouble();
+    newBook["price"] = price;
+    newBook["discountPercent"] = data.value("discountPercent").toDouble(0);
+    newBook["coverImage"] = data.value("coverImage").toString();
+    newBook["fileURL"] = data.value("fileURL").toString();
+    newBook["publisher"] = username;
+    newBook["publisherUsername"] = username;
+    newBook["isActive"] = true;
+    newBook["isNew"] = true;
+    newBook["isBestseller"] = false;
+    newBook["isPopular"] = false;
+    newBook["isFree"] = price <= 0;
+    newBook["averageRating"] = 0.0;
+    // کتاب دیجیتال هست، محدودیت موجودی فیزیکی معنی ندارد
+    newBook["stock"] = 999999;
+
+    books.append(newBook);
+    saveBooks(books);
+
+    response["success"] = true;
+    response["message"] = "کتاب با موفقیت منتشر شد";
+    response["book"] = newBook;
+    sendResponse(socket, response);
+}
+
+void Server::handleUpdateBook(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString bookId = data["book_id"].toString();
+
+    QJsonArray books = loadBooks();
+    QJsonObject response;
+    response["type"] = "update_book_response";
+
+    for (int i = 0; i < books.size(); i++) {
+        QJsonObject book = books[i].toObject();
+        if (book["id"].toString() != bookId) continue;
+
+        if (book.value("publisherUsername").toString() != username) {
+            response["success"] = false;
+            response["message"] = "شما اجازه‌ی ویرایش این کتاب را ندارید";
+            sendResponse(socket, response);
+            return;
+        }
+
+        if (data.contains("title")) book["title"] = data["title"].toString();
+        if (data.contains("author")) book["author"] = data["author"].toString();
+        if (data.contains("genre")) book["genre"] = data["genre"].toString();
+        if (data.contains("description")) book["description"] = data["description"].toString();
+        if (data.contains("price")) book["price"] = data["price"].toDouble();
+        if (data.contains("discountPercent")) book["discountPercent"] = data["discountPercent"].toDouble();
+        if (data.contains("coverImage")) book["coverImage"] = data["coverImage"].toString();
+        if (data.contains("fileURL")) book["fileURL"] = data["fileURL"].toString();
+        book["isFree"] = book.value("price").toDouble() <= 0;
+
+        books[i] = book;
+        saveBooks(books);
+        response["success"] = true;
+        response["message"] = "اطلاعات کتاب به‌روزرسانی شد";
+        sendResponse(socket, response);
+        return;
+    }
+
+    response["success"] = false;
+    response["message"] = "کتاب یافت نشد";
+    sendResponse(socket, response);
+}
+
+void Server::handleSetBookActive(QTcpSocket* socket, const QJsonObject& data, bool active) {
+    QString username = data["username"].toString();
+    QString bookId = data["book_id"].toString();
+
+    QJsonArray books = loadBooks();
+    QJsonObject response;
+    response["type"] = active ? "activate_book_response" : "deactivate_book_response";
+
+    for (int i = 0; i < books.size(); i++) {
+        QJsonObject book = books[i].toObject();
+        if (book["id"].toString() != bookId) continue;
+
+        if (book.value("publisherUsername").toString() != username) {
+            response["success"] = false;
+            response["message"] = "شما اجازه‌ی مدیریت این کتاب را ندارید";
+            sendResponse(socket, response);
+            return;
+        }
+
+        book["isActive"] = active;
+        books[i] = book;
+        saveBooks(books);
+
+        response["success"] = true;
+        response["message"] = active
+            ? "کتاب دوباره فعال شد"
+            : "کتاب از فروشگاه حذف شد (کاربرانی که قبلاً خریده‌اند همچنان دسترسی دارند)";
+        sendResponse(socket, response);
+        return;
+    }
+
+    response["success"] = false;
+    response["message"] = "کتاب یافت نشد";
+    sendResponse(socket, response);
+}
+
+void Server::handleGetPublisherBooks(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QJsonArray allBooks = enrichBooksWithRatings(loadBooks());
+    QJsonArray myBooks;
+
+    for (const QJsonValue &v : allBooks) {
+        QJsonObject book = v.toObject();
+        if (book.value("publisherUsername").toString() == username)
+            myBooks.append(book);
+    }
+
+    QJsonObject response;
+    response["type"] = "publisher_books_response";
+    response["books"] = myBooks;
+    sendResponse(socket, response);
+}
+
+void Server::handleGetPublisherStats(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QJsonArray allBooks = loadBooks();
+    QJsonArray history = loadPurchaseHistory();
+
+    // فقط کتاب‌های همین ناشر
+    QHash<QString, QJsonObject> myBooks; // bookId -> book
+    for (const QJsonValue &v : allBooks) {
+        QJsonObject book = v.toObject();
+        if (book.value("publisherUsername").toString() == username)
+            myBooks[book["id"].toString()] = book;
+    }
+
+    QHash<QString, int> salesCount;
+    double totalRevenue = 0;
+
+    for (const QJsonValue &hv : history) {
+        QJsonObject record = hv.toObject();
+        QJsonArray items = record.value("items").toArray();
+        for (const QJsonValue &iv : items) {
+            QJsonObject item = iv.toObject();
+            QString bookId = item.value("book_id").toString();
+            if (!myBooks.contains(bookId)) continue;
+
+            int qty = item.value("quantity").toInt(1);
+            salesCount[bookId] += qty;
+            totalRevenue += effectivePrice(myBooks.value(bookId)) * qty;
+        }
+    }
+
+    QJsonArray bookStats;
+    for (auto it = myBooks.constBegin(); it != myBooks.constEnd(); ++it) {
+        QJsonObject book = it.value();
+        double avg; int count;
+        calculateAverageRating(it.key(), avg, count);
+
+        QJsonObject stat;
+        stat["id"] = it.key();
+        stat["title"] = book["title"].toString();
+        stat["averageRating"] = avg;
+        stat["reviewCount"] = count;
+        stat["salesCount"] = salesCount.value(it.key(), 0);
+        bookStats.append(stat);
+    }
+
+    // مرتب‌سازی بر اساس تعداد فروش برای استخراج پرفروش‌ترین/کم‌فروش‌ترین
+    QList<QJsonObject> sorted;
+    for (const QJsonValue &v : bookStats) sorted.append(v.toObject());
+    std::sort(sorted.begin(), sorted.end(), [](const QJsonObject &a, const QJsonObject &b) {
+        return a["salesCount"].toInt() > b["salesCount"].toInt();
+    });
+
+    QJsonArray bestSellers, worstSellers;
+    for (int i = 0; i < sorted.size() && i < 5; i++) bestSellers.append(sorted[i]);
+    for (int i = sorted.size() - 1; i >= 0 && sorted.size() - i <= 5; i--) worstSellers.append(sorted[i]);
+
+    QJsonObject response;
+    response["type"] = "publisher_stats_response";
+    response["books"] = bookStats;
+    response["bestSellers"] = bestSellers;
+    response["worstSellers"] = worstSellers;
+    response["totalRevenue"] = totalRevenue;
+    response["totalBooksCount"] = myBooks.size();
+    sendResponse(socket, response);
 }
