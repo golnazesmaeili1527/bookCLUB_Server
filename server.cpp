@@ -215,6 +215,10 @@ void Server::processMessage(QTcpSocket* socket, const QJsonObject& json) {
         handleRemoveBookFromShelf(socket, json);
     } else if (type == "get_shelves") {
         handleGetShelves(socket, json);
+    } else if (type == "get_reading_progress") {
+        handleGetReadingProgress(socket, json);
+    } else if (type == "save_reading_progress") {
+        handleSaveReadingProgress(socket, json);
     }
 
 }
@@ -1397,4 +1401,50 @@ void Server::handleRemoveBookFromShelf(QTcpSocket* socket, const QJsonObject& da
     }
 
     sendShelvesResponse(socket, username, found, found ? "کتاب از قفسه حذف شد" : "قفسه یافت نشد");
+}
+
+// ================= پیشرفت مطالعه =================
+
+void Server::handleGetReadingProgress(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString bookId = data["book_id"].toString();
+
+    QJsonArray users = loadUsers();
+    int page = 0;
+
+    for (const QJsonValue &v : users) {
+        QJsonObject user = v.toObject();
+        if (user["username"].toString() == username) {
+            QJsonObject progress = user.value("readingProgress").toObject();
+            page = progress.value(bookId).toInt(0);
+            break;
+        }
+    }
+
+    QJsonObject response;
+    response["type"] = "reading_progress_response";
+    response["book_id"] = bookId;
+    response["page"] = page;
+    sendResponse(socket, response);
+    socket->flush();
+}
+
+void Server::handleSaveReadingProgress(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString bookId = data["book_id"].toString();
+    int page = data["page"].toInt();
+
+    QJsonArray users = loadUsers();
+    for (int i = 0; i < users.size(); i++) {
+        QJsonObject user = users[i].toObject();
+        if (user["username"].toString() == username) {
+            QJsonObject progress = user.value("readingProgress").toObject();
+            progress[bookId] = page;
+            user["readingProgress"] = progress;
+            users[i] = user;
+            saveUsers(users);
+            break;
+        }
+    }
+    // نیازی به پاسخ نیست؛ ذخیره‌ی پیشرفت مطالعه در پس‌زمینه انجام می‌شود
 }

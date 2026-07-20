@@ -99,6 +99,10 @@ private:
     void handleGetShelves(QTcpSocket* socket, const QJsonObject& data);
     void sendShelvesResponse(QTcpSocket* socket, const QString &username, bool success, const QString &message);
 
+    // --- پیشرفت مطالعه (آخرین صفحه خوانده‌شده هر کتاب برای هر کاربر) ---
+    void handleGetReadingProgress(QTcpSocket* socket, const QJsonObject& data);
+    void handleSaveReadingProgress(QTcpSocket* socket, const QJsonObject& data);
+
 };
 
 #endif // SERVER_H
