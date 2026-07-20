@@ -111,6 +111,13 @@ private:
     void handleGetPublisherBooks(QTcpSocket* socket, const QJsonObject& data);
     void handleGetPublisherStats(QTcpSocket* socket, const QJsonObject& data);
 
+    // --- پنل مدیر: نظارت بر کتاب‌ها و نظرات ---
+    void handleAdminGetBooks(QTcpSocket* socket);
+    void handleAdminUpdateBook(QTcpSocket* socket, const QJsonObject& data);
+    void handleAdminDeleteBook(QTcpSocket* socket, const QJsonObject& data);
+    void handleAdminGetReviews(QTcpSocket* socket);
+    void handleAdminDeleteReview(QTcpSocket* socket, const QJsonObject& data);
+
 };
 
 #endif // SERVER_H

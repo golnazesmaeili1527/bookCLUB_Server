@@ -232,6 +232,16 @@ void Server::processMessage(QTcpSocket* socket, const QJsonObject& json) {
         handleGetPublisherBooks(socket, json);
     } else if (type == "get_publisher_stats") {
         handleGetPublisherStats(socket, json);
+    } else if (type == "admin_get_books") {
+        handleAdminGetBooks(socket);
+    } else if (type == "admin_update_book") {
+        handleAdminUpdateBook(socket, json);
+    } else if (type == "admin_delete_book") {
+        handleAdminDeleteBook(socket, json);
+    } else if (type == "admin_get_reviews") {
+        handleAdminGetReviews(socket);
+    } else if (type == "admin_delete_review") {
+        handleAdminDeleteReview(socket, json);
     }
 
 }
@@ -1688,4 +1698,142 @@ void Server::handleGetPublisherStats(QTcpSocket* socket, const QJsonObject& data
     response["totalRevenue"] = totalRevenue;
     response["totalBooksCount"] = myBooks.size();
     sendResponse(socket, response);
+}
+
+// ================= پنل مدیر: نظارت بر کتاب‌ها و نظرات =================
+
+// برخلاف handleGetBooks (که مخصوص فروشگاهه و کتاب‌های غیرفعال رو حذف می‌کنه)،
+// مدیر سیستم باید همه‌ی کتاب‌ها رو ببینه، فعال یا غیرفعال، تا بتونه محتوا رو کنترل کنه
+void Server::handleAdminGetBooks(QTcpSocket* socket) {
+    QJsonArray books = enrichBooksWithRatings(loadBooks());
+
+    QJsonObject response;
+    response["type"] = "admin_books_response";
+    response["books"] = books;
+    sendResponse(socket, response);
+}
+
+// برخلاف handleUpdateBook (که فقط اجازه‌ی ویرایش کتاب‌های خودِ ناشر رو می‌ده)،
+// مدیر سیستم می‌تواند اطلاعات هر کتابی رو در سامانه ویرایش کند
+void Server::handleAdminUpdateBook(QTcpSocket* socket, const QJsonObject& data) {
+    QString bookId = data["book_id"].toString();
+
+    QJsonArray books = loadBooks();
+    QJsonObject response;
+    response["type"] = "admin_update_book_response";
+
+    for (int i = 0; i < books.size(); i++) {
+        QJsonObject book = books[i].toObject();
+        if (book["id"].toString() != bookId) continue;
+
+        if (data.contains("title")) book["title"] = data["title"].toString();
+        if (data.contains("author")) book["author"] = data["author"].toString();
+        if (data.contains("genre")) book["genre"] = data["genre"].toString();
+        if (data.contains("description")) book["description"] = data["description"].toString();
+        if (data.contains("price")) book["price"] = data["price"].toDouble();
+        if (data.contains("discountPercent")) book["discountPercent"] = data["discountPercent"].toDouble();
+        if (data.contains("coverImage")) book["coverImage"] = data["coverImage"].toString();
+        if (data.contains("fileURL")) book["fileURL"] = data["fileURL"].toString();
+        book["isFree"] = book.value("price").toDouble() <= 0;
+
+        books[i] = book;
+        saveBooks(books);
+        response["success"] = true;
+        response["message"] = "اطلاعات کتاب به‌روزرسانی شد";
+        sendResponse(socket, response);
+        return;
+    }
+
+    response["success"] = false;
+    response["message"] = "کتاب یافت نشد";
+    sendResponse(socket, response);
+}
+
+// حذف کتاب توسط مدیر سیستم قطعی و دائمیه (برخلاف غیرفعال‌سازی موقت توسط ناشر)؛
+// طبق اسپک برای کتاب‌های نامعتبر یا مغایر با قوانین استفاده می‌شود
+void Server::handleAdminDeleteBook(QTcpSocket* socket, const QJsonObject& data) {
+    QString bookId = data["book_id"].toString();
+
+    QJsonArray books = loadBooks();
+    QJsonArray updated;
+    bool found = false;
+
+    for (const QJsonValue &v : books) {
+        QJsonObject book = v.toObject();
+        if (book["id"].toString() == bookId) found = true;
+        else updated.append(book);
+    }
+
+    QJsonObject response;
+    response["type"] = "admin_delete_book_response";
+    if (found) {
+        saveBooks(updated);
+        response["success"] = true;
+        response["message"] = "کتاب حذف شد";
+    } else {
+        response["success"] = false;
+        response["message"] = "کتاب یافت نشد";
+    }
+    sendResponse(socket, response);
+}
+
+void Server::handleAdminGetReviews(QTcpSocket* socket) {
+    QJsonArray reviews = loadReviews();
+    QJsonArray books = loadBooks();
+
+    QJsonArray enriched;
+    for (const QJsonValue &v : reviews) {
+        QJsonObject review = v.toObject();
+        QString bookId = review.value("book_id").toString();
+
+        QString bookTitle = "نامشخص";
+        for (const QJsonValue &bv : books) {
+            QJsonObject book = bv.toObject();
+            if (book["id"].toString() == bookId) {
+                bookTitle = book["title"].toString();
+                break;
+            }
+        }
+        review["bookTitle"] = bookTitle;
+        enriched.append(review);
+    }
+
+    QJsonObject response;
+    response["type"] = "admin_reviews_response";
+    response["reviews"] = enriched;
+    sendResponse(socket, response);
+}
+
+// حذف نظر توسط مدیر سیستم، صرف‌نظر از اینکه چه کاربری آن را ثبت کرده (نظارت بر محتوا)
+void Server::handleAdminDeleteReview(QTcpSocket* socket, const QJsonObject& data) {
+    QString reviewId = data["review_id"].toString();
+
+    QJsonArray reviews = loadReviews();
+    QJsonArray updated;
+    QString bookId;
+    bool found = false;
+
+    for (const QJsonValue &v : reviews) {
+        QJsonObject r = v.toObject();
+        if (r["review_id"].toString() == reviewId) {
+            bookId = r["book_id"].toString();
+            found = true;
+            continue;
+        }
+        updated.append(r);
+    }
+
+    QJsonObject response;
+    response["type"] = "admin_delete_review_response";
+    if (found) {
+        saveReviews(updated);
+        response["success"] = true;
+        response["message"] = "نظر حذف شد";
+    } else {
+        response["success"] = false;
+        response["message"] = "نظر یافت نشد";
+    }
+    sendResponse(socket, response);
+
+    if (found) broadcastReviewsUpdate(bookId);
 }
