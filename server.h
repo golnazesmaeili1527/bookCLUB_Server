@@ -86,6 +86,19 @@ private:
     void handleDeleteReview(QTcpSocket* socket, const QJsonObject& data);
     void handleGetReviews(QTcpSocket* socket, const QJsonObject& data);
 
+    // --- Saved books (wishlist) ---
+    void handleSaveBook(QTcpSocket* socket, const QJsonObject& data);
+    void handleUnsaveBook(QTcpSocket* socket, const QJsonObject& data);
+    void handleGetSavedBooks(QTcpSocket* socket, const QJsonObject& data);
+
+    // --- قفسه‌ها و دسته‌بندی‌های شخصی ---
+    void handleCreateShelf(QTcpSocket* socket, const QJsonObject& data);
+    void handleDeleteShelf(QTcpSocket* socket, const QJsonObject& data);
+    void handleAddBookToShelf(QTcpSocket* socket, const QJsonObject& data);
+    void handleRemoveBookFromShelf(QTcpSocket* socket, const QJsonObject& data);
+    void handleGetShelves(QTcpSocket* socket, const QJsonObject& data);
+    void sendShelvesResponse(QTcpSocket* socket, const QString &username, bool success, const QString &message);
+
 };
 
 #endif // SERVER_H

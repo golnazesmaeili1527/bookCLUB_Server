@@ -199,6 +199,22 @@ void Server::processMessage(QTcpSocket* socket, const QJsonObject& json) {
         handleDeleteReview(socket, json);
     } else if (type == "get_reviews") {
         handleGetReviews(socket, json);
+    } else if (type == "save_book") {
+        handleSaveBook(socket, json);
+    } else if (type == "unsave_book") {
+        handleUnsaveBook(socket, json);
+    } else if (type == "get_saved_books") {
+        handleGetSavedBooks(socket, json);
+    } else if (type == "create_shelf") {
+        handleCreateShelf(socket, json);
+    } else if (type == "delete_shelf") {
+        handleDeleteShelf(socket, json);
+    } else if (type == "add_book_to_shelf") {
+        handleAddBookToShelf(socket, json);
+    } else if (type == "remove_book_from_shelf") {
+        handleRemoveBookFromShelf(socket, json);
+    } else if (type == "get_shelves") {
+        handleGetShelves(socket, json);
     }
 
 }
@@ -1082,4 +1098,303 @@ void Server::handleGetReviews(QTcpSocket* socket, const QJsonObject& data) {
 
     sendResponse(socket, response);
     socket->flush();
+}
+
+// ================= Saved books (wishlist) =================
+
+void Server::handleSaveBook(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString bookId = data["book_id"].toString();
+
+    QJsonArray users = loadUsers();
+    QJsonObject response;
+    response["type"] = "save_book_response";
+    bool found = false;
+
+    for (int i = 0; i < users.size(); i++) {
+        QJsonObject user = users[i].toObject();
+        if (user["username"].toString() == username) {
+            QJsonArray saved = user.value("savedBooks").toArray();
+            bool already = false;
+            for (const QJsonValue &v : saved)
+                if (v.toString() == bookId) { already = true; break; }
+
+            if (!already) {
+                saved.append(bookId);
+                user["savedBooks"] = saved;
+                users[i] = user;
+                saveUsers(users);
+            }
+            found = true;
+            response["success"] = true;
+            response["message"] = already ? "این کتاب قبلاً ذخیره شده بود" : "کتاب برای مطالعه بعدی ذخیره شد";
+            break;
+        }
+    }
+
+    if (!found) {
+        response["success"] = false;
+        response["message"] = "کاربر یافت نشد";
+    }
+    sendResponse(socket, response);
+    socket->flush();
+}
+
+void Server::handleUnsaveBook(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString bookId = data["book_id"].toString();
+
+    QJsonArray users = loadUsers();
+    QJsonObject response;
+    response["type"] = "unsave_book_response";
+    bool found = false;
+
+    for (int i = 0; i < users.size(); i++) {
+        QJsonObject user = users[i].toObject();
+        if (user["username"].toString() == username) {
+            QJsonArray saved = user.value("savedBooks").toArray();
+            QJsonArray updated;
+            for (const QJsonValue &v : saved)
+                if (v.toString() != bookId) updated.append(v);
+
+            user["savedBooks"] = updated;
+            users[i] = user;
+            saveUsers(users);
+            found = true;
+            response["success"] = true;
+            response["message"] = "از لیست ذخیره‌شده حذف شد";
+            break;
+        }
+    }
+
+    if (!found) {
+        response["success"] = false;
+        response["message"] = "کاربر یافت نشد";
+    }
+    sendResponse(socket, response);
+    socket->flush();
+}
+
+void Server::handleGetSavedBooks(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QJsonArray users = loadUsers();
+    QJsonArray items;
+
+    for (const QJsonValue &v : users) {
+        QJsonObject user = v.toObject();
+        if (user["username"].toString() == username) {
+            QJsonArray bookIds = user.value("savedBooks").toArray();
+            QJsonArray allBooks = loadBooks();
+
+            for (const QJsonValue &idVal : bookIds) {
+                QString bookId = idVal.toString();
+                for (const QJsonValue &bv : allBooks) {
+                    QJsonObject book = bv.toObject();
+                    if (book["id"].toString() == bookId) {
+                        items.append(book);
+                        break;
+                    }
+                }
+            }
+            break;
+        }
+    }
+
+    QJsonObject response;
+    response["type"] = "saved_books_response";
+    response["items"] = items;
+    sendResponse(socket, response);
+    socket->flush();
+}
+
+// ================= قفسه‌ها و دسته‌بندی‌های شخصی =================
+
+// پاسخ مشترک برای هر عملیات روی قفسه‌ها: لیست کامل و به‌روز قفسه‌ها (با جزئیات کتاب‌های
+// هرکدوم) به همراه نتیجه‌ی همون عملیات، تا کلاینت مجبور نباشه برای هر عملیات یه
+// درخواست جدا برای دریافت لیست بفرسته
+void Server::sendShelvesResponse(QTcpSocket* socket, const QString &username, bool success, const QString &message) {
+    QJsonArray users = loadUsers();
+    QJsonArray allBooks = loadBooks();
+    QJsonArray shelvesOut;
+
+    for (const QJsonValue &v : users) {
+        QJsonObject user = v.toObject();
+        if (user["username"].toString() != username) continue;
+
+        QJsonArray shelves = user.value("shelves").toArray();
+        for (const QJsonValue &sv : shelves) {
+            QJsonObject shelf = sv.toObject();
+            QJsonArray bookIds = shelf.value("bookIds").toArray();
+            QJsonArray books;
+
+            for (const QJsonValue &idVal : bookIds) {
+                QString bookId = idVal.toString();
+                for (const QJsonValue &bv : allBooks) {
+                    QJsonObject book = bv.toObject();
+                    if (book["id"].toString() == bookId) {
+                        books.append(book);
+                        break;
+                    }
+                }
+            }
+
+            QJsonObject shelfOut;
+            shelfOut["id"] = shelf.value("id").toString();
+            shelfOut["name"] = shelf.value("name").toString();
+            shelfOut["books"] = books;
+            shelvesOut.append(shelfOut);
+        }
+        break;
+    }
+
+    QJsonObject response;
+    response["type"] = "shelves_response";
+    response["success"] = success;
+    response["message"] = message;
+    response["shelves"] = shelvesOut;
+    sendResponse(socket, response);
+    socket->flush();
+}
+
+void Server::handleGetShelves(QTcpSocket* socket, const QJsonObject& data) {
+    sendShelvesResponse(socket, data["username"].toString(), true, "");
+}
+
+void Server::handleCreateShelf(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString name = data["name"].toString().trimmed();
+
+    if (name.isEmpty()) {
+        sendShelvesResponse(socket, username, false, "نام قفسه نمی‌تواند خالی باشد");
+        return;
+    }
+
+    QJsonArray users = loadUsers();
+    bool found = false;
+
+    for (int i = 0; i < users.size(); i++) {
+        QJsonObject user = users[i].toObject();
+        if (user["username"].toString() == username) {
+            QJsonArray shelves = user.value("shelves").toArray();
+
+            QJsonObject newShelf;
+            newShelf["id"] = "sh" + QString::number(QDateTime::currentMSecsSinceEpoch());
+            newShelf["name"] = name;
+            newShelf["bookIds"] = QJsonArray();
+            shelves.append(newShelf);
+
+            user["shelves"] = shelves;
+            users[i] = user;
+            saveUsers(users);
+            found = true;
+            break;
+        }
+    }
+
+    sendShelvesResponse(socket, username, found, found ? "قفسه ایجاد شد" : "کاربر یافت نشد");
+}
+
+void Server::handleDeleteShelf(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString shelfId = data["shelf_id"].toString();
+
+    QJsonArray users = loadUsers();
+    bool found = false;
+
+    for (int i = 0; i < users.size(); i++) {
+        QJsonObject user = users[i].toObject();
+        if (user["username"].toString() == username) {
+            QJsonArray shelves = user.value("shelves").toArray();
+            QJsonArray updated;
+            for (const QJsonValue &v : shelves) {
+                if (v.toObject().value("id").toString() != shelfId) updated.append(v);
+                else found = true;
+            }
+            user["shelves"] = updated;
+            users[i] = user;
+            saveUsers(users);
+            break;
+        }
+    }
+
+    sendShelvesResponse(socket, username, found, found ? "قفسه حذف شد" : "قفسه یافت نشد");
+}
+
+void Server::handleAddBookToShelf(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString shelfId = data["shelf_id"].toString();
+    QString bookId = data["book_id"].toString();
+
+    QJsonArray users = loadUsers();
+    bool found = false;
+
+    for (int i = 0; i < users.size(); i++) {
+        QJsonObject user = users[i].toObject();
+        if (user["username"].toString() != username) continue;
+
+        QJsonArray shelves = user.value("shelves").toArray();
+        for (int j = 0; j < shelves.size(); j++) {
+            QJsonObject shelf = shelves[j].toObject();
+            if (shelf.value("id").toString() != shelfId) continue;
+
+            QJsonArray bookIds = shelf.value("bookIds").toArray();
+            bool already = false;
+            for (const QJsonValue &v : bookIds)
+                if (v.toString() == bookId) { already = true; break; }
+
+            if (!already) bookIds.append(bookId);
+            shelf["bookIds"] = bookIds;
+            shelves[j] = shelf;
+            found = true;
+            break;
+        }
+
+        if (found) {
+            user["shelves"] = shelves;
+            users[i] = user;
+            saveUsers(users);
+        }
+        break;
+    }
+
+    sendShelvesResponse(socket, username, found, found ? "کتاب به قفسه اضافه شد" : "قفسه یافت نشد");
+}
+
+void Server::handleRemoveBookFromShelf(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString shelfId = data["shelf_id"].toString();
+    QString bookId = data["book_id"].toString();
+
+    QJsonArray users = loadUsers();
+    bool found = false;
+
+    for (int i = 0; i < users.size(); i++) {
+        QJsonObject user = users[i].toObject();
+        if (user["username"].toString() != username) continue;
+
+        QJsonArray shelves = user.value("shelves").toArray();
+        for (int j = 0; j < shelves.size(); j++) {
+            QJsonObject shelf = shelves[j].toObject();
+            if (shelf.value("id").toString() != shelfId) continue;
+
+            QJsonArray bookIds = shelf.value("bookIds").toArray();
+            QJsonArray updated;
+            for (const QJsonValue &v : bookIds)
+                if (v.toString() != bookId) updated.append(v);
+
+            shelf["bookIds"] = updated;
+            shelves[j] = shelf;
+            found = true;
+            break;
+        }
+
+        if (found) {
+            user["shelves"] = shelves;
+            users[i] = user;
+            saveUsers(users);
+        }
+        break;
+    }
+
+    sendShelvesResponse(socket, username, found, found ? "کتاب از قفسه حذف شد" : "قفسه یافت نشد");
 }

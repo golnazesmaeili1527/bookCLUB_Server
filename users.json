@@ -28,8 +28,13 @@
         ],
         "registration_date": "2026/07/19",
         "role": "Customer",
+        "savedBooks": [
+            "b005"
+        ],
         "securityAnswer": "NgocHw==",
         "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "shelves": [
+        ],
         "status": "active",
         "type": "register",
         "username": "test2"
