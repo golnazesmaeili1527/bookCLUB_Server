@@ -494,7 +494,7 @@ void Server::handleVerifySecurityAnswer(QTcpSocket* socket, const QJsonObject& d
 
 void Server::handleResetPassword(QTcpSocket* socket, const QJsonObject& data) {
     QString username = data["username"].toString();
-    QString newPasswordHash = data["password"].toString();
+    QString newPasswordHash = data["newPassword"].toString();
     QJsonArray users = loadUsers();
     QJsonObject response;
     response["type"] = "reset_password_response";
