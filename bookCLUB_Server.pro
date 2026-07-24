@@ -8,3 +8,4 @@ SOURCES += main.cpp \
            server.cpp
 
 HEADERS += server.h
+DEFINES += SERVER_DATA_DIR=\\\"$$PWD\\\"

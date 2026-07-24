@@ -1,11 +1,9 @@
 [
     {
-        "favoriteGenres": [
-        ],
+        "favoriteGenres": [],
         "firstLogin": true,
         "password": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-        "personalLibrary": [
-        ],
+        "personalLibrary": [],
         "registration_date": "2026/07/19",
         "role": "Admin",
         "securityAnswer": "NgocHw==",
@@ -39,19 +37,16 @@
         ],
         "securityAnswer": "NgocHw==",
         "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
-        "shelves": [
-        ],
+        "shelves": [],
         "status": "active",
         "type": "register",
         "username": "test2"
     },
     {
-        "favoriteGenres": [
-        ],
+        "favoriteGenres": [],
         "firstLogin": true,
         "password": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-        "personalLibrary": [
-        ],
+        "personalLibrary": [],
         "registration_date": "2026/07/19",
         "role": "Publisher",
         "securityAnswer": "NgocHw==",
@@ -67,8 +62,7 @@
         ],
         "firstLogin": false,
         "password": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-        "personalLibrary": [
-        ],
+        "personalLibrary": [],
         "registration_date": "2026/07/19",
         "role": "Customer",
         "securityAnswer": "NgocHw==",
@@ -76,5 +70,129 @@
         "status": "active",
         "type": "register",
         "username": "test22"
+    },
+    {
+        "favoriteGenres": [
+            "علمی",
+            "فلسفه",
+            "ماجراجویی"
+        ],
+        "firstLogin": false,
+        "password": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+        "personalLibrary": [],
+        "registration_date": "2026/07/24",
+        "role": "Customer",
+        "securityAnswer": "IxwL",
+        "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "status": "active",
+        "type": "register",
+        "username": "golnaz"
+    },
+    {
+        "favoriteGenres": [
+            "تاریخ",
+            "ماجراجویی",
+            "رمان"
+        ],
+        "firstLogin": false,
+        "password": "318aee3fed8c9d040d35a7fc1fa776fb31303833aa2de885354ddf3d44d8fb69",
+        "personalLibrary": [
+            "b1784731473531"
+        ],
+        "readingProgress": {
+            "b1784731473531": 0
+        },
+        "registration_date": "2026/07/22",
+        "role": "Customer",
+        "securityAnswer": "AQ==",
+        "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "status": "active",
+        "type": "register",
+        "username": "user"
+    },
+    {
+        "favoriteGenres": [],
+        "firstLogin": true,
+        "password": "edee29f882543b956620b26d0ee0e7e950399b1c4222f5de05e06425b4c995e9",
+        "personalLibrary": [],
+        "registration_date": "2026/07/22",
+        "role": "Publisher",
+        "securityAnswer": "AA==",
+        "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "status": "active",
+        "type": "register",
+        "username": "publisher"
+    },
+    {
+        "favoriteGenres": [],
+        "firstLogin": true,
+        "password": "0ffe1abd1a08215353c233d6e009613e95eec4253832a761af28ff37ac5a150c",
+        "personalLibrary": [],
+        "registration_date": "2026/07/22",
+        "role": "Admin",
+        "securityAnswer": "Aw==",
+        "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "status": "active",
+        "type": "register",
+        "username": "admin"
+    },
+    {
+        "favoriteGenres": [
+            "کودک و نوجوان",
+            "روان‌شناسی"
+        ],
+        "firstLogin": false,
+        "password": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+        "personalLibrary": [],
+        "registration_date": "2026/07/23",
+        "role": "Customer",
+        "securityAnswer": "JB0GDyI=",
+        "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "status": "active",
+        "type": "register",
+        "username": "sarina"
+    },
+    {
+        "favoriteGenres": [
+            "رمان",
+            "کودک و نوجوان",
+            "ماجراجویی"
+        ],
+        "firstLogin": false,
+        "password": "fe2592b42a727e977f055947385b709cc82b16b9a87f88c6abf3900d65d0cdc3",
+        "personalLibrary": [],
+        "registration_date": "2026/07/23",
+        "role": "Customer",
+        "securityAnswer": "IxwL",
+        "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "status": "active",
+        "type": "register",
+        "username": "setayesh"
+    },
+    {
+        "favoriteGenres": [],
+        "firstLogin": true,
+        "password": "edee29f882543b956620b26d0ee0e7e950399b1c4222f5de05e06425b4c995e9",
+        "personalLibrary": [],
+        "registration_date": "2026/07/23",
+        "role": "Publisher",
+        "securityAnswer": "AA==",
+        "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "status": "active",
+        "type": "register",
+        "username": "publisher2"
+    },
+    {
+        "favoriteGenres": [],
+        "firstLogin": true,
+        "password": "edee29f882543b956620b26d0ee0e7e950399b1c4222f5de05e06425b4c995e9",
+        "personalLibrary": [],
+        "registration_date": "2026/07/23",
+        "role": "Publisher",
+        "securityAnswer": "AA==",
+        "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "status": "active",
+        "type": "register",
+        "username": "publisher3"
     }
 ]

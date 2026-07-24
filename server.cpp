@@ -3,12 +3,21 @@
 #include <QFile>
 #include <QDateTime>
 #include <algorithm>
+//#include <QCoreApplication>
+//#include <QDir>
 
 // مسیر فایل‌های ذخیره‌سازی
-const QString USERS_FILE = "users.json";
-const QString BOOKS_FILE = "books.json";
-const QString CARTS_FILE = "carts.json";
-const QString REVIEWS_FILE = "reviews.json";
+static const QString dataFilePath(const QString &fileName) {
+    return QString(SERVER_DATA_DIR) + "/" + fileName;
+}
+const QString USERS_FILE = dataFilePath("users.json");
+const QString BOOKS_FILE = dataFilePath("books.json");
+const QString CARTS_FILE = dataFilePath("carts.json");
+const QString REVIEWS_FILE = dataFilePath("reviews.json");
+
+/*static QString getFilePath(const QString &fileName) {
+    return QDir(QCoreApplication::applicationDirPath()).filePath(fileName);
+}*/
 
 Server::Server(QObject *parent) : QTcpServer(parent) {}
 
@@ -713,7 +722,7 @@ void Server::handleRemoveFromCart(QTcpSocket* socket, const QJsonObject& data) {
 
 QJsonArray Server::loadPurchaseHistory()
 {
-    QFile file("purchase_history.json");
+    QFile file(dataFilePath("purchase_history.json"));
     if (!file.open(QIODevice::ReadOnly))
         return QJsonArray();
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
@@ -723,7 +732,7 @@ QJsonArray Server::loadPurchaseHistory()
 
 void Server::savePurchaseHistory(const QJsonArray &history)
 {
-    QFile file("purchase_history.json");
+    QFile file(dataFilePath("purchase_history.json"));
     if (file.open(QIODevice::WriteOnly)) {
         file.write(QJsonDocument(history).toJson());
         file.close();
