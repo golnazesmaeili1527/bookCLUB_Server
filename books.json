@@ -539,5 +539,27 @@
         "publisherUsername": "publisher1",
         "stock": 999999,
         "title": "ماجراهای تن تن و میلو(عصای اسرار آمیز)"
+    },
+    {
+        "author": "جی.آر.آر.تالکین",
+        "averageRating": 0,
+        "coverImage": "C:/Users/HAMAHANG/Pictures/Screenshots/Screenshot 2026-07-23 114808.png",
+        "description": "جلد اول از مجموعه کتاب ارباب حلقه ها",
+        "discountPercent": 30,
+        "fileURL": "C:/Users/HAMAHANG/Desktop/Jeld 1.pdf",
+        "genre": "علمی-تخیلی",
+        "id": "b1784794742920",
+        "isActive": true,
+        "isBestseller": false,
+        "isFree": false,
+        "isNew": true,
+        "isPopular": false,
+        "price": 1300000,
+        "publisher": "publisher1",
+        "publisherUsername": "publisher1",
+        "stock": 999999,
+        "title": "ارباب حلقه ها"
     }
+]
+
 ]
