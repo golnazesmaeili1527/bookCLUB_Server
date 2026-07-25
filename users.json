@@ -166,11 +166,18 @@
         "firstLogin": false,
         "password": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
         "personalLibrary": [
+<<<<<<< Updated upstream
             "b1784794274579",
             "b001"
         ],
         "readingProgress": {
             "b001": 11
+=======
+            "b1784965065822"
+        ],
+        "readingProgress": {
+            "b1784965065822": 1
+>>>>>>> Stashed changes
         },
         "registration_date": "2026/07/23",
         "role": "Customer",

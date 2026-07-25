@@ -75,6 +75,7 @@
         "username": "user"
     },
     {
+<<<<<<< Updated upstream
         "date": "2026-07-25T11:58:20",
         "discountAmount": 37000,
         "finalAmount": 333000,
@@ -95,10 +96,19 @@
         "items": [
             {
                 "book_id": "b1784794274579",
+=======
+        "date": "2026-07-25T11:21:38",
+        "discountAmount": 0,
+        "finalAmount": 457000,
+        "items": [
+            {
+                "book_id": "b1784965065822",
+>>>>>>> Stashed changes
                 "quantity": 1,
                 "username": "sarina"
             }
         ],
+<<<<<<< Updated upstream
         "total": 980000,
         "username": "sarina"
     },
@@ -181,5 +191,9 @@
         ],
         "total": 370000,
         "username": "user"
+=======
+        "total": 457000,
+        "username": "sarina"
+>>>>>>> Stashed changes
     }
 ]
