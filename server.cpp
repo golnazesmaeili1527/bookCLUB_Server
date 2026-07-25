@@ -15,10 +15,6 @@ const QString BOOKS_FILE = dataFilePath("books.json");
 const QString CARTS_FILE = dataFilePath("carts.json");
 const QString REVIEWS_FILE = dataFilePath("reviews.json");
 
-/*static QString getFilePath(const QString &fileName) {
-    return QDir(QCoreApplication::applicationDirPath()).filePath(fileName);
-}*/
-
 Server::Server(QObject *parent) : QTcpServer(parent) {}
 
 // ================= Users =================
@@ -55,7 +51,6 @@ QJsonArray Server::loadBooks() {
 }
 
 // ================= Carts =================
-// هر آیتم کارت: { "username": "...", "book_id": "...", "quantity": N }
 
 QJsonArray Server::loadCarts() {
     QFile file(CARTS_FILE);

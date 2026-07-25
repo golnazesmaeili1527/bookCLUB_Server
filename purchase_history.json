@@ -73,5 +73,113 @@
         ],
         "total": 450000,
         "username": "user"
+    },
+    {
+        "date": "2026-07-25T11:58:20",
+        "discountAmount": 37000,
+        "finalAmount": 333000,
+        "items": [
+            {
+                "book_id": "b1784787070334",
+                "quantity": 1,
+                "username": "user"
+            }
+        ],
+        "total": 370000,
+        "username": "user"
+    },
+    {
+        "date": "2026-07-25T16:58:46",
+        "discountAmount": 0,
+        "finalAmount": 980000,
+        "items": [
+            {
+                "book_id": "b1784794274579",
+                "quantity": 1,
+                "username": "sarina"
+            }
+        ],
+        "total": 980000,
+        "username": "sarina"
+    },
+    {
+        "date": "2026-07-25T16:59:51",
+        "discountAmount": 6000,
+        "finalAmount": 114000,
+        "items": [
+            {
+                "book_id": "b001",
+                "quantity": 1,
+                "username": "sarina"
+            }
+        ],
+        "total": 120000,
+        "username": "sarina"
+    },
+    {
+        "date": "2026-07-25T17:15:04",
+        "discountAmount": 0,
+        "finalAmount": 450000,
+        "items": [
+            {
+                "book_id": "b005",
+                "quantity": 1,
+                "username": "sara"
+            }
+        ],
+        "total": 450000,
+        "username": "sara"
+    },
+    {
+        "date": "2026-07-25T17:17:12",
+        "discountAmount": 0,
+        "finalAmount": 682000,
+        "items": [
+            {
+                "book_id": "b1784962670639",
+                "quantity": 1,
+                "username": "sara"
+            },
+            {
+                "book_id": "b1784786945491",
+                "quantity": 1,
+                "username": "sara"
+            }
+        ],
+        "total": 682000,
+        "username": "sara"
+    },
+    {
+        "date": "2026-07-25T18:36:15",
+        "discountAmount": 51800,
+        "finalAmount": 318200,
+        "items": [
+            {
+                "book_id": "b1784991856029",
+                "quantity": 1,
+                "username": "test2"
+            }
+        ],
+        "total": 370000,
+        "username": "test2"
+    },
+    {
+        "date": "2026-07-25T18:52:12",
+        "discountAmount": 37000,
+        "finalAmount": 333000,
+        "items": [
+            {
+                "book_id": "b1784787070334",
+                "quantity": 1,
+                "username": "user"
+            },
+            {
+                "book_id": "b1784794468343",
+                "quantity": 1,
+                "username": "user"
+            }
+        ],
+        "total": 370000,
+        "username": "user"
     }
 ]

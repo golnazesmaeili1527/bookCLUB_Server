@@ -26,11 +26,13 @@
             "b001",
             "b1784536984523",
             "b001",
-            "b001"
+            "b001",
+            "b1784991856029"
         ],
         "readingProgress": {
             "b001": 16,
-            "b003": 0
+            "b003": 0,
+            "b1784991856029": 2
         },
         "registration_date": "2026/07/19",
         "role": "Customer",
@@ -104,10 +106,16 @@
         "password": "318aee3fed8c9d040d35a7fc1fa776fb31303833aa2de885354ddf3d44d8fb69",
         "personalLibrary": [
             "b1784731473531",
-            "b005"
+            "b005",
+            "b1784787070334",
+            "b1784787070334",
+            "b1784794468343"
         ],
         "readingProgress": {
-            "b1784731473531": 0
+            "b005": 0,
+            "b1784731473531": 0,
+            "b1784787070334": 12,
+            "b1784794468343": 2
         },
         "registration_date": "2026/07/22",
         "role": "Customer",
@@ -158,7 +166,12 @@
         "firstLogin": false,
         "password": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
         "personalLibrary": [
+            "b1784794274579",
+            "b001"
         ],
+        "readingProgress": {
+            "b001": 11
+        },
         "registration_date": "2026/07/23",
         "role": "Customer",
         "securityAnswer": "JB0GDyI=",
@@ -214,5 +227,48 @@
         "status": "active",
         "type": "register",
         "username": "publisher3"
+    },
+    {
+        "favoriteGenres": [
+            "شعر",
+            "فلسفه",
+            "عاشقانه"
+        ],
+        "firstLogin": false,
+        "password": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+        "personalLibrary": [
+            "b005",
+            "b1784962670639",
+            "b1784786945491"
+        ],
+        "readingProgress": {
+            "b005": 1
+        },
+        "registration_date": "2026/07/25",
+        "role": "Customer",
+        "savedBooks": [
+            "b1784800579491"
+        ],
+        "securityAnswer": "msC3zJvfrciTwqK+6brtw7fcseq3+Q==",
+        "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "shelves": [
+            {
+                "bookIds": [
+                    "b005"
+                ],
+                "id": "sh1784987140738",
+                "name": "مورد علاقه"
+            },
+            {
+                "bookIds": [
+                    "b1784962670639"
+                ],
+                "id": "sh1784987159914",
+                "name": "فلسفی"
+            }
+        ],
+        "status": "active",
+        "type": "register",
+        "username": "sara"
     }
 ]
