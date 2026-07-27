@@ -18,6 +18,8 @@ class Server : public QTcpServer
 public:
     explicit Server(QObject *parent = nullptr);
     void startServer();
+    void sendNotification(QTcpSocket* socket, const QString& title, const QString& message);
+    void broadcastNotification(const QString& title, const QString& message);
 
 protected:
     void incomingConnection(qintptr socketDescriptor) override;
@@ -117,6 +119,10 @@ private:
     void handleAdminGetReviews(QTcpSocket* socket);
     void handleAdminDeleteReview(QTcpSocket* socket, const QJsonObject& data);
 
+    void sendGenreNotification(const QString& bookGenre, const QString& bookTitle, const QString& bookAuthor);
+    void sendDiscountNotification(const QString& bookId, const QString& bookTitle, double discountPercent, double newPrice);
+
+    void handleToggleFavorite(QTcpSocket* socket, const QJsonObject& data);
 };
 
 #endif // SERVER_H

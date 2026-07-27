@@ -16,7 +16,12 @@
     },
     {
         "favoriteGenres": [
-            "کودک و نوجوان"
+            "کودک و نوجوان",
+            "زندگی‌نامه"
+        ],
+        "favorites": [
+            "b1785078152610",
+            "b005"
         ],
         "firstLogin": false,
         "password": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
@@ -102,6 +107,8 @@
             "رمان",
             "جنایی"
         ],
+        "favorites": [
+        ],
         "firstLogin": false,
         "password": "318aee3fed8c9d040d35a7fc1fa776fb31303833aa2de885354ddf3d44d8fb69",
         "personalLibrary": [
@@ -120,7 +127,8 @@
         "registration_date": "2026/07/22",
         "role": "Customer",
         "savedBooks": [
-            "b004"
+            "b004",
+            "b005"
         ],
         "securityAnswer": "AQ==",
         "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
@@ -160,29 +168,40 @@
     },
     {
         "favoriteGenres": [
-            "کودک و نوجوان",
-            "روان‌شناسی"
+            "روان‌شناسی",
+            "ماجراجویی",
+            "عاشقانه"
         ],
         "firstLogin": false,
         "password": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
         "personalLibrary": [
-<<<<<<< Updated upstream
             "b1784794274579",
-            "b001"
+            "b001",
+            "b003",
+            "b005"
         ],
         "readingProgress": {
-            "b001": 11
-=======
-            "b1784965065822"
-        ],
-        "readingProgress": {
-            "b1784965065822": 1
->>>>>>> Stashed changes
+            "b001": 11,
+            "b003": 0,
+            "b005": 11
         },
         "registration_date": "2026/07/23",
         "role": "Customer",
+        "savedBooks": [
+            "b1784798510915",
+            "b1784962812685"
+        ],
         "securityAnswer": "JB0GDyI=",
         "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "shelves": [
+            {
+                "bookIds": [
+                    "b005"
+                ],
+                "id": "sh1785071867367",
+                "name": "مورد علاقه"
+            }
+        ],
         "status": "active",
         "type": "register",
         "username": "sarina"
@@ -277,5 +296,22 @@
         "status": "active",
         "type": "register",
         "username": "sara"
+    },
+    {
+        "favoriteGenres": [
+            "ماجراجویی",
+            "زندگی‌نامه"
+        ],
+        "firstLogin": false,
+        "password": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+        "personalLibrary": [
+        ],
+        "registration_date": "2026/07/26",
+        "role": "Customer",
+        "securityAnswer": "AQ==",
+        "securityQuestion": "FQcATDBMDA0+F1lUUURbMAYbDmMNABYjCgsN",
+        "status": "active",
+        "type": "register",
+        "username": "amir"
     }
 ]

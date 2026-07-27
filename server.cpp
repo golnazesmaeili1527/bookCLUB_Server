@@ -246,8 +246,9 @@ void Server::processMessage(QTcpSocket* socket, const QJsonObject& json) {
         handleAdminGetReviews(socket);
     } else if (type == "admin_delete_review") {
         handleAdminDeleteReview(socket, json);
+    } else if (type == "toggle_favorite") {
+        handleToggleFavorite(socket, json);
     }
-
 }
 
 // ================= Auth handlers =================
@@ -292,6 +293,7 @@ void Server::handleLogin(QTcpSocket* socket, const QJsonObject& data) {
         response["status"] = "success";
         response["role"] = role;
         response["message"] = "ورود موفقیت‌آمیز";
+        socket->setProperty("username", username);
     }
 
     sendResponse(socket, response);
@@ -882,14 +884,15 @@ void Server::handleGetLibrary(QTcpSocket* socket, const QJsonObject& data)
     QString username = data["username"].toString();
     QJsonArray users = loadUsers();
     QJsonArray library;
+    QJsonArray favoritesList; // لیست کتاب‌های کامل علاقه‌مندی
 
     for (const QJsonValue &v : users) {
         QJsonObject user = v.toObject();
         if (user["username"].toString() == username) {
-            QJsonArray bookIds = user.value("personalLibrary").toArray();
             QJsonArray allBooks = loadBooks();
 
-            // تبدیل شناسه‌ها به اطلاعات کامل کتاب
+            // ۱. تبدیل شناسه‌های کتابخانه شخصی به اطلاعات کامل کتاب
+            QJsonArray bookIds = user.value("personalLibrary").toArray();
             for (const QJsonValue &idVal : bookIds) {
                 QString bookId = idVal.toString();
                 for (const QJsonValue &bv : allBooks) {
@@ -900,15 +903,32 @@ void Server::handleGetLibrary(QTcpSocket* socket, const QJsonObject& data)
                     }
                 }
             }
+
+            // ۲. تبدیل شناسه‌های علاقه‌مندی‌ها به اطلاعات کامل کتاب
+            QJsonArray favIds = user.value("favorites").toArray();
+            for (const QJsonValue &favVal : favIds) {
+                QString favId = favVal.toString();
+                for (const QJsonValue &bv : allBooks) {
+                    QJsonObject book = bv.toObject();
+                    if (book["id"].toString() == favId) {
+                        favoritesList.append(book);
+                        break;
+                    }
+                }
+            }
+
             break;
         }
     }
-                //دریافت  تاریخچه خرید کاربر
+
+    // ارسال پاسخ به کلاینت شامل کتابخانه شخصی و لیست علاقه‌مندی‌ها
     QJsonObject response;
     response["type"] = "library_response";
     response["items"] = library;
+    response["favorites"] = favoritesList; // اضافه شدن آرایه کامل علاقه‌مندی‌ها
     sendResponse(socket, response);
 }
+
 void Server::handleGetPurchaseHistory(QTcpSocket* socket, const QJsonObject& data)
 {
     QString username = data["username"].toString();
@@ -1495,6 +1515,7 @@ void Server::handlePublishBook(QTcpSocket* socket, const QJsonObject& data) {
     QString username = data["username"].toString();
     QString title = data["title"].toString().trimmed();
     QString author = data["author"].toString().trimmed();
+    QString genre = data["genre"].toString().trimmed();
 
     QJsonObject response;
     response["type"] = "publish_book_response";
@@ -1537,6 +1558,8 @@ void Server::handlePublishBook(QTcpSocket* socket, const QJsonObject& data) {
     response["message"] = "کتاب با موفقیت منتشر شد";
     response["book"] = newBook;
     sendResponse(socket, response);
+
+    sendGenreNotification(genre, title, author);
 }
 
 void Server::handleUpdateBook(QTcpSocket* socket, const QJsonObject& data) {
@@ -1558,6 +1581,8 @@ void Server::handleUpdateBook(QTcpSocket* socket, const QJsonObject& data) {
             return;
         }
 
+        double oldDiscount = book.value("discountPercent").toDouble(0);
+
         if (data.contains("title")) book["title"] = data["title"].toString();
         if (data.contains("author")) book["author"] = data["author"].toString();
         if (data.contains("genre")) book["genre"] = data["genre"].toString();
@@ -1573,6 +1598,15 @@ void Server::handleUpdateBook(QTcpSocket* socket, const QJsonObject& data) {
         response["success"] = true;
         response["message"] = "اطلاعات کتاب به‌روزرسانی شد";
         sendResponse(socket, response);
+
+        double newDiscount = book.value("discountPercent").toDouble(0);
+        if (newDiscount > 0 && newDiscount != oldDiscount) {
+            double originalPrice = book.value("price").toDouble(0);
+            double discountedPrice = originalPrice * (1.0 - newDiscount / 100.0);
+
+            sendDiscountNotification(bookId, book.value("title").toString(), newDiscount, discountedPrice);
+        }
+
         return;
     }
 
@@ -1836,4 +1870,161 @@ void Server::handleAdminDeleteReview(QTcpSocket* socket, const QJsonObject& data
     sendResponse(socket, response);
 
     if (found) broadcastReviewsUpdate(bookId);
+}
+
+// ارسال اعلان به یک سوکت مشخص
+void Server::sendNotification(QTcpSocket* socket, const QString& title, const QString& message) {
+    if (!socket || socket->state() != QAbstractSocket::ConnectedState)
+        return;
+
+    QJsonObject notif;
+    notif["type"] = "notification";
+    notif["title"] = title;
+    notif["message"] = message;
+
+    QJsonDocument doc(notif);
+    QByteArray data = doc.toJson(QJsonDocument::Compact) + "\n"; // انتهای آن \n لازم است تا onReadyRead کلاینت خط را تشخیص دهد
+
+    socket->write(data);
+    socket->flush();
+}
+
+// ارسال اعلان به تمام سوکت‌های متصل (مثلاً هنگام ثبت کتاب جدید)
+void Server::broadcastNotification(const QString& title, const QString& message) {
+    for (QTcpSocket* socket : m_buffers.keys()) {
+        sendNotification(socket, title, message);
+    }
+}
+
+void Server::sendGenreNotification(const QString& bookGenre, const QString& bookTitle, const QString& bookAuthor) {
+    QJsonArray users = loadUsers();
+
+    QSet<QString> interestedUsernames;
+    for (const QJsonValue& userValue : users) {
+        QJsonObject userObj = userValue.toObject();
+        QString role = userObj["role"].toString();
+
+        if (role == "Customer") {
+            QJsonArray favoriteGenres = userObj["favoriteGenres"].toArray();
+            for (const QJsonValue& g : favoriteGenres) {
+                if (g.toString().trimmed().compare(bookGenre.trimmed(), Qt::CaseInsensitive) == 0) {
+                    interestedUsernames.insert(userObj["username"].toString());
+                    break;
+                }
+            }
+        }
+    }
+
+    if (interestedUsernames.isEmpty()) {
+        return;
+    }
+
+    for (QTcpSocket* clientSocket : m_clients) {
+        if (!clientSocket || clientSocket->state() != QAbstractSocket::ConnectedState)
+            continue;
+
+        QString clientUsername = clientSocket->property("username").toString();
+
+        if (interestedUsernames.contains(clientUsername)) {
+            QString title = "کتاب جدید در ژانر مورد علاقه شما!";
+            QString message = QString("کتاب جدیدی با عنوان «%1» اثر %2 در ژانر «%3» منتشر شد!")
+                                  .arg(bookTitle, bookAuthor, bookGenre);
+
+            sendNotification(clientSocket, title, message);
+        }
+    }
+}
+
+void Server::sendDiscountNotification(const QString& bookId, const QString& bookTitle, double discountPercent, double newPrice) {
+    QJsonArray users = loadUsers();
+
+    for (const QJsonValue& userVal : users) {
+        QJsonObject userObj = userVal.toObject();
+        if (userObj["role"].toString() != "Customer")
+            continue;
+
+        QString targetUsername = userObj["username"].toString();
+        bool isInterested = false;
+
+        // بررسی در لیست علاقه‌مندی‌ها
+        QJsonArray favorites = userObj["favorites"].toArray();
+        for (const QJsonValue& f : favorites) {
+            if (f.isString() && f.toString() == bookId) { isInterested = true; break; }
+            if (f.isObject() && f.toObject()["id"].toString() == bookId) { isInterested = true; break; }
+        }
+
+        // بررسی در لیست کتاب‌های ذخیره‌شده
+        if (!isInterested) {
+            QJsonArray savedBooks = userObj["savedBooks"].toArray();
+            for (const QJsonValue& s : savedBooks) {
+                if (s.isString() && s.toString() == bookId) { isInterested = true; break; }
+                if (s.isObject() && s.toObject()["id"].toString() == bookId) { isInterested = true; break; }
+            }
+        }
+
+        // اگر کتاب در لیست کاربر بود، ارسال اعلان به سوکت فعال او
+        if (isInterested) {
+            for (QTcpSocket* clientSocket : m_clients) {
+                if (clientSocket && clientSocket->state() == QAbstractSocket::ConnectedState) {
+                    if (clientSocket->property("username").toString() == targetUsername) {
+                        QString title = "🔥 تخفیف ویژه روی کتاب مورد علاقه شما!";
+                        QString message = QString("کتاب «%1» که در لیست علاقه‌مندی‌ها/ذخیره‌شده‌های شما قرار دارد، شامل %2٪ تخفیف شد!\nقیمت جدید: %3 تومان")
+                                              .arg(bookTitle)
+                                              .arg(discountPercent)
+                                              .arg(newPrice);
+
+                        sendNotification(clientSocket, title, message);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void Server::handleToggleFavorite(QTcpSocket* socket, const QJsonObject& data) {
+    QString username = data["username"].toString();
+    QString bookId = data["book_id"].toString();
+
+    QJsonArray users = loadUsers();
+    QJsonObject response;
+    response["type"] = "toggle_favorite_response";
+
+    for (int i = 0; i < users.size(); ++i) {
+        QJsonObject user = users[i].toObject();
+        if (user["username"].toString() == username) {
+            QJsonArray favorites = user["favorites"].toArray();
+            bool exists = false;
+
+            // بررسی وجود کتاب در لیست و حذف آن (در صورت وجود)
+            for (int j = 0; j < favorites.size(); ++j) {
+                if (favorites[j].toString() == bookId) {
+                    favorites.removeAt(j);
+                    exists = true;
+                    break;
+                }
+            }
+
+            // اگر نبود، اضافه شود
+            if (!exists) {
+                favorites.append(bookId);
+                response["action"] = "added";
+                response["message"] = "کتاب به علاقه‌مندی‌ها اضافه شد";
+            } else {
+                response["action"] = "removed";
+                response["message"] = "کتاب از علاقه‌مندی‌ها حذف شد";
+            }
+
+            user["favorites"] = favorites;
+            users[i] = user;
+            saveUsers(users);
+
+            response["success"] = true;
+            response["book_id"] = bookId;
+            sendResponse(socket, response);
+            return;
+        }
+    }
+
+    response["success"] = false;
+    sendResponse(socket, response);
 }
