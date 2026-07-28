@@ -1092,6 +1092,16 @@ void Server::handlePostReview(QTcpSocket* socket, const QJsonObject& data) {
         }
     }
 
+
+    QJsonObject newReview;
+    newReview["review_id"] = "r" + QString::number(QDateTime::currentMSecsSinceEpoch());
+    newReview["book_id"] = bookId;
+    newReview["username"] = username;
+    newReview["rating"] = rating;
+    newReview["comment"] = comment;
+    newReview["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+
+    reviews.append(newReview);
     saveReviews(reviews);
 
     response["success"] = true;
@@ -1099,25 +1109,24 @@ void Server::handlePostReview(QTcpSocket* socket, const QJsonObject& data) {
     sendResponse(socket, response);
     socket->flush();
 
-    // --- ارسال نوتیفیکیشن دقیق نظر به ناشر ---
+    // --- اضافه شده برای ارسال نوتیفیکیشن به ناشر ---
     QJsonArray books = loadBooks();
     for (const QJsonValue &v : books) {
         QJsonObject b = v.toObject();
         if (b["id"].toString() == bookId) {
             QString pub = b["publisher"].toString();
             if (pub.isEmpty()) pub = b["author"].toString();
-
             if (!pub.isEmpty()) {
                 sendNotificationToPublisher(
                     pub,
                     "دیدگاه جدید 💬",
-                    QString("کاربر %1 برای کتاب «%2» نظر جدیدی ثبت کرد.").arg(username, b["title"].toString())
+                    QString("کاربر «%1» برای کتاب «%2» نظر جدیدی ثبت کرد.").arg(username, b["title"].toString())
                     );
             }
             break;
         }
     }
-
+    // ------------------------------------------------
 
     broadcastReviewsUpdate(bookId);
 }
